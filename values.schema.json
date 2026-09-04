@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "persistence", "server", "service", "rcon", "secrets"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["enabled", "mountPath", "size"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mountPath": { "type": "string", "pattern": "^/" },
+        "existingClaim": { "type": "string" },
+        "size": { "type": "string", "minLength": 1 },
+        "retain": { "type": "boolean" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["name", "bindAddress", "port", "maxClients", "enforceWhitelist", "antiAbuse"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "bindAddress": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "maxClients": { "type": "integer", "minimum": 1 },
+        "maxChunkRadius": { "type": "integer", "minimum": 1 },
+        "enforceWhitelist": { "type": "integer", "enum": [0, 1] },
+        "antiAbuse": { "type": "integer", "enum": [0, 1] }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "externalTrafficPolicy": { "enum": ["Cluster", "Local"] },
+        "tcpNodePort": { "type": ["integer", "null"], "minimum": 30000, "maximum": 32767 },
+        "udpNodePort": { "type": ["integer", "null"], "minimum": 30000, "maximum": 32767 }
+      }
+    },
+    "rcon": {
+      "type": "object",
+      "required": ["enabled", "modVersion", "server", "web"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "modVersion": { "type": "string", "minLength": 1 },
+        "server": {
+          "type": "object",
+          "required": ["address", "port"],
+          "properties": {
+            "address": { "type": "string", "minLength": 1 },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "web": {
+          "type": "object",
+          "required": ["address", "port", "requireAuth", "service", "ingress"],
+          "properties": {
+            "address": { "type": "string", "minLength": 1 },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "requireAuth": { "const": true },
+            "service": {
+              "type": "object",
+              "required": ["type", "port"],
+              "properties": {
+                "type": { "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+                "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+              }
+            },
+            "ingress": {
+              "type": "object",
+              "required": ["enabled", "hosts"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "hosts": { "type": "array", "minItems": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "required": ["existingSecret", "keys"],
+      "properties": {
+        "existingSecret": { "type": "string" },
+        "keys": {
+          "type": "object",
+          "required": ["serverPassword", "rconPassword", "rconWebSecretKey", "rconWebPassword"],
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "forceRegenerateConfig": { "type": "boolean" },
+    "mods": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 },
+    "extraEnv": { "type": "object" },
+    "extraEnvVars": { "type": "array" },
+    "extraVolumeMounts": { "type": "array" },
+    "extraVolumes": { "type": "array" }
+  }
+}

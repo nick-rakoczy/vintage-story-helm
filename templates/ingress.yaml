@@ -1,0 +1,36 @@
+{{- if and .Values.rcon.enabled .Values.rcon.web.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "vintage-story.fullname" . }}-rcon-web
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+  {{- with .Values.rcon.web.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.rcon.web.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.rcon.web.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.rcon.web.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "vintage-story.fullname" $ }}-rcon-web
+                port:
+                  number: {{ $.Values.rcon.web.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+

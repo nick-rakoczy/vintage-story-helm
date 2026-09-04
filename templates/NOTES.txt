@@ -1,0 +1,20 @@
+Vintage Story is starting with image {{ .Values.image.repository }}:{{ .Values.image.tag }}.
+
+Watch startup:
+  kubectl logs -n {{ .Release.Namespace }} deployment/{{ include "vintage-story.fullname" . }} -f
+
+{{- if eq .Values.service.type "LoadBalancer" }}
+Find the game server address:
+  kubectl get service -n {{ .Release.Namespace }} {{ include "vintage-story.fullname" . }}
+Connect on port {{ .Values.server.port }} after an external address appears.
+{{- else if eq .Values.service.type "NodePort" }}
+Use a node address and the TCP/UDP NodePorts shown by:
+  kubectl get service -n {{ .Release.Namespace }} {{ include "vintage-story.fullname" . }}
+{{- else }}
+The game service is cluster-local. Add an ingress-controller-specific TCP/UDP
+mapping, change service.type, or use another supported external load balancer.
+{{- end }}
+
+The data PVC is {{ if .Values.persistence.enabled }}enabled{{ else }}disabled{{ end }}.
+Back it up before changing the image tag or installed mods.
+

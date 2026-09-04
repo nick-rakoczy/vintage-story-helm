@@ -1,0 +1,200 @@
+# The image tag is pinned because the maintainer warns that upgrades can break
+# worlds and mods. Back up the data PVC before changing it.
+image:
+  repository: ghcr.io/darkmatterproductions/vintagestory
+  tag: "1.22.7"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# The image writes all worlds, player data, configuration, logs, and mods here.
+persistence:
+  enabled: true
+  mountPath: /vintagestory/data
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
+  annotations: {}
+  # Keep a chart-created PVC after `helm uninstall` to protect world data.
+  retain: true
+
+# These values generate serverconfig.json only on the first start. The image
+# deliberately preserves an existing file. To apply changed values to an
+# existing world, set forceRegenerateConfig for one upgrade, then set it back.
+server:
+  name: Vintage Story Server
+  description: ""
+  url: ""
+  welcomeMessage: "Welcome {0}, may you survive well and prosper"
+  bindAddress: 0.0.0.0
+  port: 42420
+  maxClients: 16
+  maxChunkRadius: 12
+  language: en
+  advertise: false
+  upnp: false
+  compressPackets: true
+  passTimeWhenEmpty: false
+  allowCreativeMode: true
+  allowPvp: true
+  hostedMode: false
+  hostedModeAllowMods: false
+  # The image maps 0 to disabled and 1 to enabled for these bit flags.
+  enforceWhitelist: 0
+  antiAbuse: 0
+
+logging:
+  debug: false
+  chat: false
+
+forceRegenerateConfig: false
+
+# Each entry is the download path shown by mods.vintagestory.at, for example:
+# - 72291/vsvanillaplus_0.1.5.zip
+mods: []
+
+# RCON is off by default. Raw RCON stays bound to loopback and never gets a
+# Kubernetes Service because its protocol is unencrypted. The included web UI
+# is the supported remote access path.
+rcon:
+  enabled: false
+  modVersion: "2.0.2"
+  server:
+    address: 127.0.0.1
+    port: 42425
+    timeout: 20
+    maxConnections: 10
+  web:
+    address: 0.0.0.0
+    port: 5000
+    rconHost: localhost
+    lockRconAddress: true
+    rconTimeout: 10
+    maxMessageSize: 4096
+    requireAuth: true
+    traditionalLoginEnabled: true
+    username: admin
+    maxLoginAttempts: 5
+    lockoutDuration: 300
+    logCommands: true
+    logLevel: INFO
+    service:
+      type: ClusterIP
+      annotations: {}
+      port: 5000
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+        - host: vintage-story-rcon.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+
+# Keep credentials out of values files when possible. When existingSecret is
+# set, the chart reads the keys below and ignores the inline values. Only the
+# game password is optional. All three RCON secrets are required when enabled.
+secrets:
+  existingSecret: ""
+  keys:
+    serverPassword: server-password
+    rconPassword: rcon-password
+    rconWebSecretKey: rcon-web-secret-key
+    rconWebPassword: rcon-web-password
+  serverPassword: ""
+  rconPassword: ""
+  rconWebSecretKey: ""
+  rconWebPassword: ""
+
+# Both protocols are required on the same game port. LoadBalancer is the most
+# portable way to make the server reachable outside a cluster. Clusters without
+# a load balancer can select NodePort or ClusterIP here.
+service:
+  type: LoadBalancer
+  annotations: {}
+  externalTrafficPolicy: Cluster
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  tcpNodePort: null
+  udpNodePort: null
+
+# The server can take a while to generate a new world. The startup probe gives
+# it up to 10 minutes before liveness checks begin.
+probes:
+  startup:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 60
+  readiness:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 6
+  liveness:
+    enabled: true
+    periodSeconds: 20
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+# The official server guide estimates 1 GiB base RAM plus about 300 MiB per
+# player and recommends four CPU threads. These defaults cover 16 players with
+# some headroom. Raise them for mods or a larger maxClients value.
+resources:
+  requests:
+    cpu: "2"
+    memory: 6Gi
+  limits:
+    memory: 8Gi
+
+# The entrypoint needs root briefly for volume ownership, then uses gosu to run
+# the game as 1100:1100. Dropping any of these capabilities breaks that step.
+podSecurityContext:
+  fsGroup: 1100
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsUser: 0
+  runAsGroup: 0
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+# Send the equivalent of Ctrl+C before Kubernetes stops the entrypoint so the
+# game gets time to flush its world state.
+terminationGracePeriodSeconds: 120
+gracefulShutdown:
+  enabled: true
+  waitSeconds: 30
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# Extra image environment variables. Values are converted to strings. This is
+# useful for image options added after this chart release.
+extraEnv: {}
+
+# Additional env entries support valueFrom for externally managed Secrets and
+# ConfigMaps. They are appended after the chart-managed entries.
+extraEnvVars: []
+
+# Additional mounts and volumes, such as a read-only custom server-config.yaml.
+extraVolumeMounts: []
+extraVolumes: []

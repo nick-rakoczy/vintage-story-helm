@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vintage-story.fullname" . }}
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: game-tcp
+      port: {{ .Values.server.port }}
+      targetPort: game-tcp
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.tcpNodePort }}
+      nodePort: {{ .Values.service.tcpNodePort }}
+      {{- end }}
+    - name: game-udp
+      port: {{ .Values.server.port }}
+      targetPort: game-udp
+      protocol: UDP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.udpNodePort }}
+      nodePort: {{ .Values.service.udpNodePort }}
+      {{- end }}
+  selector:
+    {{- include "vintage-story.selectorLabels" . | nindent 4 }}
+
+{{- if .Values.rcon.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vintage-story.fullname" . }}-rcon-web
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+  {{- with .Values.rcon.web.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.rcon.web.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.rcon.web.service.port }}
+      targetPort: rcon-web
+      protocol: TCP
+  selector:
+    {{- include "vintage-story.selectorLabels" . | nindent 4 }}
+{{- end }}
+
