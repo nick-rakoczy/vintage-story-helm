@@ -1,0 +1,248 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vintage-story.fullname" . }}
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "vintage-story.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "vintage-story.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/secret-values: {{ toJson .Values.secrets | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: vintage-story
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: game-tcp
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+            - name: game-udp
+              containerPort: {{ .Values.server.port }}
+              protocol: UDP
+            {{- if .Values.rcon.enabled }}
+            - name: rcon-web
+              containerPort: {{ .Values.rcon.web.port }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: ENABLE_DEBUG_LOGGING
+              value: {{ include "vintage-story.bool" .Values.logging.debug | quote }}
+            - name: ENABLE_CHAT_LOGGING
+              value: {{ include "vintage-story.bool" .Values.logging.chat | quote }}
+            - name: FORCE_REGENERATE_CONFIG
+              value: {{ include "vintage-story.bool" .Values.forceRegenerateConfig | quote }}
+            - name: VS_CFG_SERVER_NAME
+              value: {{ .Values.server.name | quote }}
+            - name: VS_CFG_SERVER_DESCRIPTION
+              value: {{ .Values.server.description | quote }}
+            - name: VS_CFG_SERVER_URL
+              value: {{ .Values.server.url | quote }}
+            - name: VS_CFG_WELCOME_MESSAGE
+              value: {{ .Values.server.welcomeMessage | quote }}
+            - name: VS_CFG_SERVER_IP
+              value: {{ .Values.server.bindAddress | quote }}
+            - name: VS_CFG_SERVER_PORT
+              value: {{ .Values.server.port | quote }}
+            - name: VS_CFG_MAX_CLIENTS
+              value: {{ .Values.server.maxClients | quote }}
+            - name: VS_CFG_MAX_CHUNK_RADIUS
+              value: {{ .Values.server.maxChunkRadius | quote }}
+            - name: VS_CFG_SERVER_LANGUAGE
+              value: {{ .Values.server.language | quote }}
+            - name: VS_CFG_ADVERTISE_SERVER
+              value: {{ include "vintage-story.bool" .Values.server.advertise | quote }}
+            - name: VS_CFG_SERVER_UPNP
+              value: {{ include "vintage-story.bool" .Values.server.upnp | quote }}
+            - name: VS_CFG_SERVER_COMPRESS_PACKETS
+              value: {{ include "vintage-story.bool" .Values.server.compressPackets | quote }}
+            - name: VS_CFG_PASS_TIME_WHEN_EMPTY
+              value: {{ include "vintage-story.bool" .Values.server.passTimeWhenEmpty | quote }}
+            - name: VS_CFG_ALLOW_CREATIVE_MODE
+              value: {{ include "vintage-story.bool" .Values.server.allowCreativeMode | quote }}
+            - name: VS_CFG_ALLOW_PVP
+              value: {{ include "vintage-story.bool" .Values.server.allowPvp | quote }}
+            - name: VS_CFG_HOSTED_MODE
+              value: {{ include "vintage-story.bool" .Values.server.hostedMode | quote }}
+            - name: VS_CFG_HOSTED_MODE_ALLOW_MODS
+              value: {{ include "vintage-story.bool" .Values.server.hostedModeAllowMods | quote }}
+            - name: VS_CFG_ENFORCE_WHITELIST
+              value: {{ .Values.server.enforceWhitelist | quote }}
+            - name: VS_CFG_ANTIABUSE
+              value: {{ .Values.server.antiAbuse | quote }}
+            - name: VS_MODS
+              value: {{ join "," .Values.mods | quote }}
+            - name: VS_RCON_ENABLED
+              value: {{ include "vintage-story.bool" .Values.rcon.enabled | quote }}
+            - name: VS_RCON_MOD_VERSION
+              value: {{ .Values.rcon.modVersion | quote }}
+            {{- if or .Values.secrets.existingSecret .Values.secrets.serverPassword }}
+            - name: VS_CFG_SERVER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vintage-story.secretName" . }}
+                  key: {{ .Values.secrets.keys.serverPassword }}
+                  optional: true
+            {{- end }}
+            {{- if .Values.rcon.enabled }}
+            - name: VS_RCON_SERVER_CFG_IP
+              value: {{ .Values.rcon.server.address | quote }}
+            - name: VS_RCON_SERVER_CFG_PORT
+              value: {{ .Values.rcon.server.port | quote }}
+            - name: VS_RCON_SERVER_CFG_TIMEOUT
+              value: {{ .Values.rcon.server.timeout | quote }}
+            - name: VS_RCON_SERVER_CFG_MAXCONNECTIONS
+              value: {{ .Values.rcon.server.maxConnections | quote }}
+            - name: VS_RCON_SERVER_CFG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vintage-story.secretName" . }}
+                  key: {{ .Values.secrets.keys.rconPassword }}
+            - name: VS_RCON_CLIENT_CFG_SERVER_HOST
+              value: {{ .Values.rcon.web.address | quote }}
+            - name: VS_RCON_CLIENT_CFG_SERVER_PORT
+              value: {{ .Values.rcon.web.port | quote }}
+            - name: VS_RCON_CLIENT_CFG_SERVER_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vintage-story.secretName" . }}
+                  key: {{ .Values.secrets.keys.rconWebSecretKey }}
+            - name: VS_RCON_CLIENT_CFG_RCON_DEFAULT_HOST
+              value: {{ .Values.rcon.web.rconHost | quote }}
+            - name: VS_RCON_CLIENT_CFG_RCON_DEFAULT_PORT
+              value: {{ .Values.rcon.server.port | quote }}
+            - name: VS_RCON_CLIENT_CFG_RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vintage-story.secretName" . }}
+                  key: {{ .Values.secrets.keys.rconPassword }}
+            - name: VS_RCON_CLIENT_CFG_RCON_LOCKED_ADDRESS
+              value: {{ include "vintage-story.bool" .Values.rcon.web.lockRconAddress | quote }}
+            - name: VS_RCON_CLIENT_CFG_RCON_TIMEOUT
+              value: {{ .Values.rcon.web.rconTimeout | quote }}
+            - name: VS_RCON_CLIENT_CFG_RCON_MAX_MESSAGE_SIZE
+              value: {{ .Values.rcon.web.maxMessageSize | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_REQUIRE_AUTH
+              value: {{ include "vintage-story.bool" .Values.rcon.web.requireAuth | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_TRADITIONAL_LOGIN_ENABLED
+              value: {{ include "vintage-story.bool" .Values.rcon.web.traditionalLoginEnabled | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_DEFAULT_USERNAME
+              value: {{ .Values.rcon.web.username | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vintage-story.secretName" . }}
+                  key: {{ .Values.secrets.keys.rconWebPassword }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_MAX_LOGIN_ATTEMPTS
+              value: {{ .Values.rcon.web.maxLoginAttempts | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_LOCKOUT_DURATION
+              value: {{ .Values.rcon.web.lockoutDuration | quote }}
+            - name: VS_RCON_CLIENT_CFG_SECURITY_OAUTH_ENABLED
+              value: "false"
+            - name: VS_RCON_CLIENT_CFG_LOGGING_LOG_COMMANDS
+              value: {{ include "vintage-story.bool" .Values.rcon.web.logCommands | quote }}
+            - name: VS_RCON_CLIENT_CFG_LOGGING_LOG_LEVEL
+              value: {{ .Values.rcon.web.logLevel | quote }}
+            {{- end }}
+            {{- range $name, $value := .Values.extraEnv }}
+            - name: {{ $name }}
+              value: {{ $value | toString | quote }}
+            {{- end }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.gracefulShutdown.enabled }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/bash
+                  - -ec
+                  - >-
+                    pkill -INT -f '[V]intagestoryServer.dll' || true;
+                    sleep {{ .Values.gracefulShutdown.waitSeconds }}
+          {{- end }}
+          {{- if .Values.probes.startup.enabled }}
+          startupProbe:
+            tcpSocket:
+              port: game-tcp
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: game-tcp
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: game-tcp
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "vintage-story.claimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
