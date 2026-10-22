@@ -1,0 +1,12 @@
+{{- if .Values.worldConfiguration }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vintage-story.fullname" . }}-world-configuration
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+data:
+  world-configuration.json: {{ toJson .Values.worldConfiguration | quote }}
+  configure-world.py: |
+    {{- .Files.Get "files/configure-world.py" | nindent 4 }}
+{{- end }}

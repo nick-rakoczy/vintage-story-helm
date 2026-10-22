@@ -4,4 +4,7 @@
 .vscode/
 *.swp
 *.tmp
+tests/
+**/__pycache__/
+*.pyc
 

@@ -53,6 +53,15 @@ logging:
 
 forceRegenerateConfig: false
 
+# Written to WorldConfig.WorldConfiguration in serverconfig.json on each start.
+# These settings initialize NEW worlds; use /worldconfig for existing worlds.
+# Values are serialized as strings, as expected by Vintage Story.
+# worldConfiguration:
+#   deathPunishment: keep
+#   graceTimer: 2
+#   saplingGrowthRate: 2
+worldConfiguration: {}
+
 # Each entry is the download path shown by mods.vintagestory.at, for example:
 # - 72291/vsvanillaplus_0.1.5.zip
 mods: []

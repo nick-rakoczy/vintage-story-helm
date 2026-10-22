@@ -45,6 +45,28 @@ The container creates `serverconfig.json` on the first start and preserves it af
 
 The chart accepts current image options that do not yet have structured values through `extraEnv`. Use `extraEnvVars` when an environment variable comes from a Secret or ConfigMap.
 
+World settings have a separate map because the image's environment variable
+mapping does not support arbitrary world options:
+
+```yaml
+worldConfiguration:
+  deathPunishment: keep
+  graceTimer: 2
+  saplingGrowthRate: 2
+```
+
+The chart merges this map into `WorldConfig.WorldConfiguration` in
+`serverconfig.json` on each container start. It converts values to strings and
+preserves other config fields. A values change restarts the pod. Removing a key
+leaves its previous JSON value in place; `forceRegenerateConfig=true` rebuilds
+the config from the image defaults and current values, then applies this map.
+
+These JSON settings only initialize **new worlds**. For an existing world, run
+`/worldconfig deathPunishment keep` and `/worldconfig saplingGrowthRate 2` through
+the game console or RCON, then restart the server. `graceTimer` only applies at
+world creation. Regenerating `serverconfig.json` does not change the settings
+stored in a saved world. See the [world configuration reference](https://wiki.vintagestory.at/World_Configuration/en).
+
 The default resource request follows the official estimate of 1 GiB base memory plus roughly 300 MiB per player for the default 16-player server. Increase memory when adding mods or raising `server.maxClients`.
 
 ## RCON web UI

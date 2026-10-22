@@ -100,6 +100,10 @@
       }
     },
     "forceRegenerateConfig": { "type": "boolean" },
+    "worldConfiguration": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number", "boolean"] }
+    },
     "mods": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 },
     "extraEnv": { "type": "object" },
