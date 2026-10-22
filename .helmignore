@@ -5,6 +5,7 @@
 *.swp
 *.tmp
 tests/
-**/__pycache__/
+__pycache__/
+files/__pycache__/
 *.pyc
 
