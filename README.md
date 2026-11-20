@@ -69,6 +69,23 @@ stored in a saved world. See the [world configuration reference](https://wiki.vi
 
 The default resource request follows the official estimate of 1 GiB base memory plus roughly 300 MiB per player for the default 16-player server. Increase memory when adding mods or raising `server.maxClients`.
 
+## Mods
+
+`mods` accepts direct HTTP/HTTPS download URLs from any host, alongside existing
+Vintage Story short download paths:
+
+```yaml
+mods:
+  - 72291/vsvanillaplus_0.1.5.zip
+  - https://example.com/releases/custom-mod.zip
+```
+
+URLs must end with the mod filename (such as `.zip` or `.dll`); query strings
+are supported and excluded from the saved filename. Redirects are followed.
+Mods download before server startup; failed downloads prevent startup and are
+retried on the next container start. Existing filenames are skipped, so use
+distinct, versioned filenames. Removing an entry leaves its file on the PVC.
+
 ## RCON web UI
 
 Raw RCON is unencrypted. The chart pins it to `127.0.0.1` inside the pod and does not create a Service for port `42425`. Set `rcon.enabled=true` to enable the bundled web UI. Supply its required secrets, then use its ClusterIP Service or configure `rcon.web.ingress` with TLS.

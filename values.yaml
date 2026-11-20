@@ -62,7 +62,8 @@ forceRegenerateConfig: false
 #   saplingGrowthRate: 2
 worldConfiguration: {}
 
-# Each entry is the download path shown by mods.vintagestory.at, for example:
+# Full HTTP/HTTPS download URLs or short paths from mods.vintagestory.at:
+# - https://example.com/releases/custom-mod.zip
 # - 72291/vsvanillaplus_0.1.5.zip
 mods: []
 

@@ -1,0 +1,12 @@
+{{- if .Values.mods }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vintage-story.fullname" . }}-mods
+  labels:
+    {{- include "vintage-story.labels" . | nindent 4 }}
+data:
+  mods.json: {{ dict "mods" .Values.mods "dataPath" .Values.persistence.mountPath "configureWorld" (not (empty .Values.worldConfiguration)) | toJson | quote }}
+  download-mods.py: |
+    {{- .Files.Get "files/download-mods.py" | nindent 4 }}
+{{- end }}
