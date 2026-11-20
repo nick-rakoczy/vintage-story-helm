@@ -19,6 +19,9 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
+        {{- if .Values.mods }}
+        checksum/mods: {{ include (print $.Template.BasePath "/mods.yaml") . | sha256sum }}
+        {{- end }}
         checksum/secret-values: {{ toJson .Values.secrets | sha256sum }}
         {{- if .Values.worldConfiguration }}
         checksum/world-configuration: {{ include (print $.Template.BasePath "/world-configuration.yaml") . | sha256sum }}
@@ -39,7 +42,9 @@ spec:
         - name: vintage-story
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.worldConfiguration }}
+          {{- if .Values.mods }}
+          command: ["python3", "/etc/vintage-story-mods/download-mods.py"]
+          {{- else if .Values.worldConfiguration }}
           command: ["python3", "/etc/vintage-story/configure-world.py"]
           {{- end }}
           securityContext:
@@ -102,7 +107,7 @@ spec:
             - name: VS_CFG_ANTIABUSE
               value: {{ .Values.server.antiAbuse | quote }}
             - name: VS_MODS
-              value: {{ join "," .Values.mods | quote }}
+              value: ""
             - name: VS_RCON_ENABLED
               value: {{ include "vintage-story.bool" .Values.rcon.enabled | quote }}
             - name: VS_RCON_MOD_VERSION
@@ -183,6 +188,11 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           volumeMounts:
+            {{- if .Values.mods }}
+            - name: mods
+              mountPath: /etc/vintage-story-mods
+              readOnly: true
+            {{- end }}
             {{- if .Values.worldConfiguration }}
             - name: world-configuration
               mountPath: /etc/vintage-story
@@ -231,6 +241,11 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        {{- if .Values.mods }}
+        - name: mods
+          configMap:
+            name: {{ include "vintage-story.fullname" . }}-mods
+        {{- end }}
         {{- if .Values.worldConfiguration }}
         - name: world-configuration
           configMap:
